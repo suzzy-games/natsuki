@@ -1,5 +1,6 @@
 # natsuki - Database via HTTP
 Designed for use with ROBLOX HTTP Requests via `NatsukiDriver.luau` Driver
+
 Supported Databases:
 - Postgres
 - Redis
@@ -32,9 +33,9 @@ Supported Databases:
 | NATSUKI_REDIS_POOL_SIZE    |  int   |    Yes    |                      `10`                      | Your Redis Pool Size, the more connections the more concurrent commands can be run           |
 | NATSUKI_PROXY              | string |    Yes    |                     `none`                     | Whether or not to enable proxy mode, allowed values are: cloudflare, none. Defaults to none. |
 | NATSUKI_JWT                | string |    Yes    |             `your-256-bit-secret`              | Your JWT Secret, it has a default so ensure you change it in production                      |
-| NATSUKI_KAHO_PRINT         |  any   |    Yes    |                     `true`                     | Whether or not to log to console. Disables if set to anything other than `nil`.               |
-| NATSUKI_KAHO_ENABLE        |  any   |    Yes    |                     `true`                     | Whether or not to store log on Redis. Disables if set to anything other than `nil`.           |
-| NATSUKI_ENABLE_SSL         |  any   |    Yes    |                     `nil`                      | Enables SSL if set to anything other than nil                                                |
+| NATSUKI_KAHO_PRINT         | string |    Yes    |                    `false`                     | Whether or not to log to console. Enables if set to anything other than `nil`.               |
+| NATSUKI_KAHO_ENABLE        | string |    Yes    |                    `false`                     | Whether or not to store log on Redis. Enable if set to anything other than `nil`.            |
+| NATSUKI_ENABLE_SSL         | string |    Yes    |                     `nil`                      | Enables SSL if set to anything other than nil                                                |
 | SSL_CERT_PATH              | string |    Yes    |                     `nil`                      | Path to your SSL Certificate File                                                            |
 | SSL_KEY_PATH               | string |    Yes    |                     `nil`                      | Path to your SSL Key File                                                                    |
 
@@ -46,3 +47,18 @@ Supported Databases:
 |   0   | Generic Error from Client (Bad Request, Bad Authorization) |
 | 50011 | Generic Query/Command Error, see included `message` field  |
 | 50012 | Generic Row Processing Error, see included `message` field |
+
+## Example Error Message (4xx, 5xx)
+```json
+{
+  "error": 0,
+  "message": "404: Endpoint Not Found"
+}
+```
+
+## Example Success Message (2xx)
+```json
+{
+  "results": [1, 2, 3]
+}
+```
