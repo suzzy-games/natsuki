@@ -31,8 +31,8 @@ func RedisHandler(ctx *gin.Context) {
 	if err := db.Redis.Do(rctx, radix.Cmd(&Response, Command[0], Command[1:]...)); err != nil {
 		// Return Error Message
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
 			"error":   50011,
+			"message": err.Error(),
 		})
 		return
 	}

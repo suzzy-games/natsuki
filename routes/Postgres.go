@@ -35,8 +35,8 @@ func PostgresQuery(ctx *gin.Context) {
 	rows, err := db.Postgres.Query(rctx, Body.Query, Body.Arguments...)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
 			"error":   50011,
+			"message": err.Error(),
 		})
 		return
 	}
@@ -52,8 +52,8 @@ func PostgresQuery(ctx *gin.Context) {
 		// Return Error
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"message": err.Error(),
 				"code":    50012,
+				"message": err.Error(),
 			})
 			return
 		}
@@ -62,8 +62,8 @@ func PostgresQuery(ctx *gin.Context) {
 	// Return Error (if any)
 	if rows.Err() != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": rows.Err().Error(),
 			"error":   50011,
+			"message": rows.Err().Error(),
 		})
 		return
 	}

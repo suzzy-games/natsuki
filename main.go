@@ -43,7 +43,10 @@ func main() {
 	engine.POST("/redis", middleware.VerifyToken, routes.RedisHandler)
 	engine.POST("/sql", middleware.VerifyToken, routes.PostgresQuery)
 	engine.NoRoute(func(ctx *gin.Context) {
-		ctx.AbortWithStatus(http.StatusNotFound)
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"error":   0,
+			"message": "404: Error Not Found",
+		})
 	})
 
 	// See if we should serve via SSL
