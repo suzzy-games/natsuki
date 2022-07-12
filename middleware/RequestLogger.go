@@ -25,12 +25,24 @@ func LogRequest(ctx *gin.Context) {
 	ctx.Next()
 	endTime := time.Now()
 
+	// Create HTTP Message
+	// 2003/06/26 12:34:56 [HTTP] [INFO] {STATUS} {METHOD} {PATH}{QUERY} {RESPONSE_TIME} {REMOTE_IP}
+	logMessage := fmt.Sprintf(
+		"%d %s %s%s %s %s",
+		ctx.Writer.Status(),
+		ctx.Request.Method,
+		ctx.Request.URL.Path,
+		ctx.Request.URL.RawQuery,
+		endTime.Sub(startTime).String(),
+		ctx.RemoteIP(),
+	)
+
 	// Log Request
 	kaho.KahoLogRaw(kaho.KahoLogEntry{
 		Severity:  kaho.INFO,
 		Timestamp: startTime,
 		Service:   "HTTP",
-		Message:   fmt.Sprintf("%v %s %s%s", ctx.Writer.Status(), endTime.Sub(startTime), ctx.Request.URL.Path, ctx.Request.URL.RawQuery),
+		Message:   logMessage,
 		Payload: &HTTPLogPayload{
 			RemoteAddr: ctx.RemoteIP(),
 			Latency:    time.Now().UnixNano() - startTime.UnixNano(),
