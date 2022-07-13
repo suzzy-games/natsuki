@@ -19,7 +19,8 @@ func createRedisClientPool() radix.Client {
 	var poolsize = utils.GetEnvDefaultInt("NATSUKI_REDIS_POOL_SIZE", 5)
 	var redisAddr = utils.GetEnvDefault("NATSUKI_REDIS_ADDR", "127.0.0.1:6379")
 	PoolConfig := radix.PoolConfig{
-		Size: poolsize,
+		PingInterval: 15 * time.Second,
+		Size:         poolsize,
 		Dialer: radix.Dialer{
 			AuthPass: redisPass,
 		},
