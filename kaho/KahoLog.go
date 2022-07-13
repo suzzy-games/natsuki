@@ -2,6 +2,8 @@ package kaho
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"natsuki/db"
 	"os"
@@ -30,53 +32,99 @@ type KahoLogEntry struct {
 	Severity  Severity  `json:"severity"`
 	Service   string    `json:"service"`
 	Message   string    `json:"message"`
-	Payload   any       `json:"payload"`
+	Data      any       `json:"data"`
 }
 
 var LogToConsole bool = (os.Getenv("NATSUKI_KAHO_PRINT") != "")
-var StoreLogRedis bool = (os.Getenv("NATSUKI_KAHO_ENABLE") != "")
+var BroadcastLog bool = (os.Getenv("NATSUKI_KAHO_BROADCAST") != "")
+var StoreLogInDB bool = ShouldStoreInDb()
+var InitializationQuery = `
+-- Create Kaho Schema
+CREATE SCHEMA IF NOT EXISTS kaho;
 
-func Log(severity Severity, service string, message string, payload any) {
+-- Create Kaho Entries Table
+CREATE TABLE IF NOT EXISTS kaho.entries (
+	id SERIAL NOT NULL PRIMARY KEY,
+	"timestamp" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+	severity text,
+	service text,
+	message text,
+	data text
+) WITH (autovacuum_enabled='true');`
+
+func ShouldStoreInDb() bool {
+	enabled := (os.Getenv("NATSUKI_KAHO_STORE") != "")
+
+	if enabled {
+		// Create kaho.entries Table
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		_, err := db.Postgres.Exec(ctx, InitializationQuery)
+
+		// Unable to Initialize kaho.entries Table
+		if err != nil {
+			log.Printf("[SQL][ERROR] unable to create table 'kaho.entries': %s", err.Error())
+			return false
+		}
+	}
+
+	return enabled
+}
+
+func Log(severity Severity, service string, message string, data any) {
 	KahoLogRaw(KahoLogEntry{
 		Timestamp: time.Now(),
 		Severity:  severity,
 		Message:   message,
 		Service:   service,
-		Payload:   payload,
+		Data:      data,
 	})
 }
 
 func KahoLogRaw(entry KahoLogEntry) error {
-
-	// Log to Console (if specified)
+	// Log to Console (if Enabled)
 	if LogToConsole {
-		log.Printf("[%s][%s] %s", entry.Service, entry.Severity, entry.Message)
+		if entry.Data != nil {
+			log.Printf("[%s][%s] %s • %v", entry.Service, entry.Severity, entry.Message, entry.Data)
+		} else {
+			log.Printf("[%s][%s] %s ", entry.Service, entry.Severity, entry.Message)
+		}
 	}
 
-	// Do Not Store in Redis (if specified)
-	if StoreLogRedis {
-		return nil
-	}
+	// Write to Database (if Enabled)
+	if StoreLogInDB {
+		// Convert Data to String
+		jsonString, err := json.Marshal(entry.Data)
+		if err != nil {
+			return err
+		}
 
-	// Write Log to Database
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := db.Redis.Do(ctx, radix.FlatCmd(nil, "LPUSH", "kaho:entries", entry)); err != nil {
-		return err
-	}
+		// Insert Entry into Database
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		results, err := db.Postgres.Query(
+			ctx, "INSERT INTO kaho.entries (severity, service, message, data) VALUES ($1, $2, $3, $4) RETURNING id;",
+			string(entry.Severity), entry.Service, entry.Message, string(jsonString),
+		)
+		if err != nil {
+			results.Close()
+			return err
+		}
 
-	// Trim Entries to recent 100,000
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := db.Redis.Do(ctx, radix.Cmd(nil, "LTRIM", "kaho:entries", "0", "100000")); err != nil {
-		return err
-	}
+		// Get Insert Id
+		var insertId int64
+		results.Next()
+		results.Scan(&insertId)
+		results.Close()
 
-	// Publish new entry event (we dont publish the entry data because that would be extra wasteful if nobody is tailing)
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := db.Redis.Do(ctx, radix.Cmd(nil, "PUBLISH", "kaho:entries", "")); err != nil {
-		return err
+		// Publish Insert Id to channel 'kaho:create'
+		if BroadcastLog {
+			ctx, cancel = context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+			if err := db.Redis.Do(ctx, radix.Cmd(nil, "PUBLISH", "kaho:create", fmt.Sprintf("%v", insertId))); err != nil {
+				return err
+			}
+		}
 	}
 
 	// Exit if Fatal Error

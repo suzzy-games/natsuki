@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type HTTPLogPayload struct {
+type HTTPLogData struct {
 	RemoteAddr string `json:"remoteAddr"`
 	Latency    int64  `json:"latency"`
 	Status     int    `json:"status"`
@@ -43,7 +43,7 @@ func LogRequest(ctx *gin.Context) {
 		Timestamp: startTime,
 		Service:   "HTTP",
 		Message:   logMessage,
-		Payload: &HTTPLogPayload{
+		Data: &HTTPLogData{
 			RemoteAddr: ctx.RemoteIP(),
 			Latency:    time.Now().UnixNano() - startTime.UnixNano(),
 			Status:     ctx.Writer.Status(),
