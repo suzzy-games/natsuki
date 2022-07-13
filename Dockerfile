@@ -7,6 +7,7 @@ RUN go build -o main main.go
 # Copy Built Application
 FROM alpine:3.16.0 AS runtime
 WORKDIR /app
+COPY --from=builder /app/ssl/* .
 COPY --from=builder /app/main .
 
 # Run Application
