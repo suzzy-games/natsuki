@@ -40,6 +40,7 @@ func main() {
 
 	// Create Routes
 	engine.Use(gin.Recovery(), middleware.LogRequest)
+	engine.GET("/", routes.Index)
 	engine.POST("/redis", middleware.VerifyToken, routes.RedisHandler)
 	engine.POST("/sql", middleware.VerifyToken, routes.PostgresQuery)
 	engine.NoRoute(func(ctx *gin.Context) {
